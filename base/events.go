@@ -10,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	SQL "my2sql/sqlbuilder"
-	constvar "my2sql/constvar"
 	"github.com/siddontang/go-log/log"
-
+	constvar "my2sql/constvar"
+	SQL "my2sql/sqlbuilder"
 )
 
 type ExtraSqlInfoOfPrint struct {
@@ -97,7 +96,7 @@ func GenForwardRollbackSqlFromBinEvent(i uint, cfg *ConfCmd, wg *sync.WaitGroup)
 
 				}
 			}
-			
+
 			if colType == "blob" {
 				// text is stored as blob
 				if strings.Contains(strings.ToLower(tbInfo.Columns[ci].FieldType), "text") {
@@ -198,6 +197,7 @@ func GenForwardRollbackSqlFromBinEvent(i uint, cfg *ConfCmd, wg *sync.WaitGroup)
 
 func PrintExtraInfoForForwardRollbackupSql(cfg *ConfCmd, wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	var (
 		rollbackFileName string                   = ""
 		tmpFileName      string                   = ""
@@ -218,7 +218,9 @@ func PrintExtraInfoForForwardRollbackupSql(cfg *ConfCmd, wg *sync.WaitGroup) {
 		lastPrintFile      string             = ""
 		printBytesInterval uint32             = 1024 * 1024 * 10 //every 10MB print process info
 	)
+
 	log.Infof(fmt.Sprintf("start thread to write redo/rollback sql into file"))
+
 	for sc := range cfg.SqlChan {
 		if cfg.WorkType == "rollback" {
 			tmpFileName = GetForwardRollbackSqlFileName(sc.sqlInfo.schema, sc.sqlInfo.table, cfg.FilePerTable, cfg.OutputDir, true, sc.sqlInfo.binlog, true)
@@ -288,34 +290,38 @@ func PrintExtraInfoForForwardRollbackupSql(cfg *ConfCmd, wg *sync.WaitGroup) {
 	log.Info("exit thread to write redo/rollback sql into file")
 }
 
-func GetForwardRollbackSqlFileName(schema string, table string, filePerTable bool, outDir string, ifRollback bool, binlog string, ifTmp bool) string {
+func GetForwardRollbackSqlFileName(
+	schema string,
+	table string,
+	filePerTable bool,
+	outDir string,
+	ifRollback bool,
+	binlog string,
+	ifTmp bool) string {
 
 	_, idx := GetBinlogBasenameAndIndex(binlog)
 
 	if ifRollback {
 		if ifTmp {
 			if filePerTable {
-				return filepath.Join(outDir, fmt.Sprintf(".%s.%s.%s.%d.sql", schema, table, RollbackSqlFileNamePrefix, idx))
+				return filepath.Join(outDir, fmt.Sprintf(".%s.%s.%s.sql", schema, table, RollbackSqlFileNamePrefix))
 			} else {
 				return filepath.Join(outDir, fmt.Sprintf(".%s.%d.sql", RollbackSqlFileNamePrefix, idx))
 			}
-
 		} else {
 			if filePerTable {
-				return filepath.Join(outDir, fmt.Sprintf("%s.%s.%s.%d.sql", schema, table, RollbackSqlFileNamePrefix, idx))
+				return filepath.Join(outDir, fmt.Sprintf("%s.%s.%s.sql", schema, table, RollbackSqlFileNamePrefix))
 			} else {
 				return filepath.Join(outDir, fmt.Sprintf("%s.%d.sql", RollbackSqlFileNamePrefix, idx))
 			}
 		}
 	} else {
 		if filePerTable {
-			return filepath.Join(outDir, fmt.Sprintf("%s.%s.%s.%d.sql", schema, table, ForwardSqlFileNamePrefix, idx))
+			return filepath.Join(outDir, fmt.Sprintf("%s.%s.%s.sql", schema, table, ForwardSqlFileNamePrefix))
 		} else {
 			return filepath.Join(outDir, fmt.Sprintf("%s.%d.sql", ForwardSqlFileNamePrefix, idx))
 		}
-
 	}
-
 }
 
 func GetForwardRollbackContentLineWithExtra(sq ForwardRollbackSqlOfPrint, ifExtra bool) string {
